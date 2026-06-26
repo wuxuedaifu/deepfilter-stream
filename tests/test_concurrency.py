@@ -31,19 +31,19 @@ def test_shared_model_many_streams_match_single(data_dir, require_model):
 
 
 def test_concurrent_calls_on_one_stream_raise(data_dir, require_model):
-    noisy, _ = sf.read(data_dir / "noisy_2s_48k.wav", dtype="float32")
+    import pytest
     stream = DeepFilterModel().new_stream()
-    errors = []
-    barrier = threading.Barrier(2)
-
-    def hammer():
-        try:
-            barrier.wait()
-            for _ in range(50):
-                stream.process(noisy[:9600], SAMPLE_RATE)
-        except RuntimeError as e:
-            errors.append(e)
-
-    a = threading.Thread(target=hammer); b = threading.Thread(target=hammer)
-    a.start(); b.start(); a.join(); b.join()
-    assert errors, "expected RuntimeError on concurrent single-stream use"
+    noisy = np.zeros(9600, dtype=np.float32)
+    # Simulate a concurrent in-progress call by holding the stream's lock,
+    # then assert a second entry is rejected deterministically.
+    assert stream._lock.acquire(blocking=False) is True
+    try:
+        with pytest.raises(RuntimeError):
+            stream.process(noisy, SAMPLE_RATE)
+        with pytest.raises(RuntimeError):
+            stream.flush()
+    finally:
+        stream._lock.release()
+    # After releasing, the stream is usable again.
+    out = stream.process(noisy, SAMPLE_RATE)
+    assert out.dtype == np.float32
