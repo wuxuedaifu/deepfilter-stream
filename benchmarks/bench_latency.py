@@ -24,11 +24,14 @@ def algorithmic_offset():
     den = Denoiser(); f = den.frame_size
     sig = np.zeros(f * 40, dtype=np.float32); sig[f * 5] = 1.0  # impulse
     out = np.concatenate([den.process_frame(sig[i:i+f]) for i in range(0, len(sig), f)])
-    a = np.abs(out).astype(np.float64)
-    b = np.abs(sig).astype(np.float64)
-    lag = int(np.argmax(np.correlate(a, b, mode="full"))) - (len(b) - 1)
-    print(f"impulse offset (xcorr): {lag} samples "
-          f"({lag / den.sample_rate * 1e3:.2f} ms)")
+    # Background is silent except the single impulse, so the output is essentially
+    # just the (attenuated) impulse response: argmax of |out| locates it directly.
+    # (Cross-correlating against a unit-impulse reference reduces to this same argmax,
+    # so it would add cost without adding robustness here.)
+    peak_in = int(np.argmax(np.abs(sig)))
+    peak_out = int(np.argmax(np.abs(out)))
+    lag = peak_out - peak_in
+    print(f"impulse offset: {lag} samples ({lag / den.sample_rate * 1e3:.2f} ms)")
 
 
 if __name__ == "__main__":
