@@ -3,6 +3,18 @@
 Pure onnxruntime + numpy; no torch/df/libdf needed. Run from repo root:
     python scripts/export_assets.py --onnx tests/data/denoiser_model.onnx \
         --wav tests/data/noisy_2s_48k.wav --out tests/data --ref-name reference_2s_48k.wav
+
+Note on release artifacts
+--------------------------
+The canonical release artifacts are the committed files
+``tests/data/{denoiser_model.onnx, initial_states.npz, meta.json}``.
+Their sha256 digests are pinned in ``deepfilter_stream._meta.ASSETS`` and the
+binaries are uploaded to the GitHub Release.  Running this script regenerates
+``initial_states.npz`` (and optionally a new reference clip) but the
+regenerated ``meta.json`` may differ from the committed one in formatting.
+Use this script to refresh ``initial_states.npz`` or the reference audio only;
+do **not** use it to re-stamp the release ``meta.json`` or update
+``_meta.ASSETS`` unless you are cutting a new model release.
 """
 import argparse, json, hashlib, pathlib
 import numpy as np

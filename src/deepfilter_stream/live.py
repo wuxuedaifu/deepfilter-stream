@@ -12,13 +12,13 @@ from . import DeepFilterModel
 from ._meta import SAMPLE_RATE
 
 
-def _worker(stream, in_q: queue.Queue, out_buf, stop: threading.Event):
+def _worker(stream, in_q: queue.Queue, out_buf, stop: threading.Event, device_rate: int):
     while not stop.is_set():
         try:
             block = in_q.get(timeout=0.1)
         except queue.Empty:
             continue
-        y = stream.process(block, stream.sample_rate)
+        y = stream.process(block, device_rate)
         if y.size:
             with out_buf["lock"]:
                 out_buf["data"] = np.concatenate([out_buf["data"], y])
@@ -47,8 +47,6 @@ def main(argv=None) -> int:
     in_q: queue.Queue = queue.Queue(maxsize=64)
     out_buf = {"data": np.zeros(0, np.float32), "lock": threading.Lock()}
     stop = threading.Event()
-    t = threading.Thread(target=_worker, args=(stream, in_q, out_buf, stop), daemon=True)
-    t.start()
 
     def callback(indata, outdata, frames, time, status):  # noqa: ANN001
         if status:
@@ -65,13 +63,28 @@ def main(argv=None) -> int:
             else:
                 outdata[:, 0] = 0.0  # underflow -> silence, never block
 
-    try:
-        with sd.Stream(
-            samplerate=a.samplerate, blocksize=a.blocksize, dtype="float32",
+    def open_stream(rate: int):
+        return sd.Stream(
+            samplerate=rate, blocksize=a.blocksize, dtype="float32",
             channels=1, callback=callback,
             device=(a.input_device, a.output_device),
-        ):
-            print(f"Running at {a.samplerate} Hz, blocksize {a.blocksize}. Ctrl+C to stop.")
+        )
+
+    requested = a.samplerate
+    try:
+        sd_stream = open_stream(requested)
+        rate = requested
+    except Exception:
+        rate = int(sd.query_devices(kind="input")["default_samplerate"])
+        print(f"device rejected {requested} Hz; using {rate} Hz")
+        sd_stream = open_stream(rate)
+
+    t = threading.Thread(target=_worker, args=(stream, in_q, out_buf, stop, rate), daemon=True)
+    t.start()
+
+    try:
+        with sd_stream:
+            print(f"Running at {rate} Hz, blocksize {a.blocksize}. Ctrl+C to stop.")
             threading.Event().wait()
     except KeyboardInterrupt:
         print("\nstopping...")
