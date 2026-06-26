@@ -79,6 +79,11 @@ class Denoiser:
         return y
 
     def flush(self) -> np.ndarray:
+        # drain any tail held by the input resampler's filter first.
+        if self._in_rs is not None:
+            tail = self._in_rs.process(np.zeros(0, dtype=np.float32), last=True)
+            if tail.size:
+                self._in_buf.write(tail)
         # pad the final partial input frame with zeros, drain everything.
         f = self.frame_size
         rem = self._in_buf.available % f
