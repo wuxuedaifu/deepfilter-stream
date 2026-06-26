@@ -1,0 +1,24 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev]"
+      - run: ruff check src tests
+      - name: Fetch model (optional; tests skip if absent)
+        continue-on-error: true
+        run: |
+          curl -fL -o tests/data/denoiser_model.onnx \
+            https://github.com/wuxuedaifu/deepfilter-stream/releases/download/model-dfn3-512-v1/denoiser_model.onnx || \
+            echo "model not available yet; model-dependent tests will skip"
+      - run: pytest -m "not slow" -v
+        env:
+          DEEPFILTER_STREAM_MODEL_DIR: ${{ github.workspace }}/tests/data

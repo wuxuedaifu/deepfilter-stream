@@ -1,0 +1,23 @@
+name: bench
+on:
+  workflow_dispatch:
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e ".[dev]"
+      - name: Fetch model (optional; benchmarks skip if absent)
+        continue-on-error: true
+        run: |
+          curl -fL -o tests/data/denoiser_model.onnx \
+            https://github.com/wuxuedaifu/deepfilter-stream/releases/download/model-dfn3-512-v1/denoiser_model.onnx || \
+            echo "model not available yet; model-dependent benchmarks will skip"
+      - run: python benchmarks/bench_latency.py
+        env:
+          DEEPFILTER_STREAM_MODEL_DIR: ${{ github.workspace }}/tests/data
+      - run: python benchmarks/bench_concurrency.py
+        env:
+          DEEPFILTER_STREAM_MODEL_DIR: ${{ github.workspace }}/tests/data

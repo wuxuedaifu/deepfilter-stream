@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 from deepfilter_stream.model import DeepFilterModel
 
 

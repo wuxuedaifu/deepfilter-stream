@@ -22,8 +22,10 @@ def test_shared_model_many_streams_match_single(data_dir, require_model):
         results[idx] = _full(model.new_stream(), noisy)
 
     threads = [threading.Thread(target=worker, args=(i,)) for i in range(4)]
-    for t in threads: t.start()
-    for t in threads: t.join()
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
 
     for i in range(4):
         m = min(len(ref), len(results[i]))

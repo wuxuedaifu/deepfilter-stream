@@ -1,6 +1,9 @@
 """Scale concurrent streams; report aggregate RTF and max real-time stream count."""
-import threading, time
+import threading
+import time
+
 import numpy as np
+
 from deepfilter_stream import DeepFilterModel
 
 
@@ -22,8 +25,10 @@ def run_n(n, seconds=5.0):
 
     ts = [threading.Thread(target=worker, args=(i,)) for i in range(n)]
     t0 = time.perf_counter()
-    for t in ts: t.start()
-    for t in ts: t.join()
+    for t in ts:
+        t.start()
+    for t in ts:
+        t.join()
     wall = time.perf_counter() - t0
     audio_s = n_frames * f / model.sample_rate
     agg_rtf = max(times.values()) / audio_s

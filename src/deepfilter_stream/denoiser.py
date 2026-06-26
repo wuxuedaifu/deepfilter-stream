@@ -4,7 +4,6 @@ from __future__ import annotations
 import threading
 import numpy as np
 
-from ._meta import SAMPLE_RATE
 from .ringbuffer import RingBuffer
 from .resample import StreamResampler
 
