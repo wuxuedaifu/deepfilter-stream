@@ -34,7 +34,7 @@ def _complete(d: pathlib.Path) -> bool:
     return all((d / fn).exists() for fn in _FILES.values())
 
 
-def ensure_assets(cache_root: str | None = None) -> dict:
+def ensure_assets(cache_root: str | None = None) -> dict[str, pathlib.Path]:
     # 1. explicit override directory
     env = os.environ.get("DEEPFILTER_STREAM_MODEL_DIR")
     if env:
