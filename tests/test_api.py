@@ -8,7 +8,7 @@ def test_version_string():
     assert deepfilter_stream.__version__.count(".") >= 2
 
 
-def test_atten_lim_none_is_exact(require_model):
+def test_atten_lim_none_runs(require_model):
     m = DeepFilterModel()
     a = m.new_stream(atten_lim_db=None)
     f = np.random.randn(512).astype(np.float32) * 0.1
@@ -27,7 +27,9 @@ def test_atten_lim_limits_suppression_energy(require_model):
         e_plain += float(np.sum(plain.process_frame(f) ** 2))
         e_lim += float(np.sum(limited.process_frame(f.copy()) ** 2))
     # limited keeps more (dry-mixed) energy than fully-suppressed plain output
-    assert e_lim >= e_plain
+    assert e_lim > e_plain * 1.01, (
+        f"limited energy {e_lim:.4f} should exceed plain {e_plain:.4f} by >1% (dry-mix not applied?)"
+    )
 
 
 def test_flush_drains_input_resampler(require_model):
