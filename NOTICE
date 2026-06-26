@@ -1,0 +1,6 @@
+deepfilter-stream bundles and runs the DeepFilterNet3 model.
+
+DeepFilterNet (https://github.com/Rikorose/DeepFilterNet) is licensed under
+the MIT and Apache-2.0 licenses. The ONNX model distributed via this project's
+GitHub Releases is derived from the DeepFilterNet3 "torchDF" streaming export
+(hop=512 / fft=1024 finetuned variant). Original work © the DeepFilterNet authors.
