@@ -1,6 +1,6 @@
+"""Resolve model assets: env override -> cache -> download from GitHub Release."""
 from __future__ import annotations
 
-"""Resolve model assets: env override -> cache -> download from GitHub Release."""
 import hashlib
 import os
 import pathlib
