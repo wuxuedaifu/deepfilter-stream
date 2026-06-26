@@ -1,6 +1,7 @@
 """Per-stream denoiser: framing, state threading, resampling, flush."""
 from __future__ import annotations
 
+import threading
 import numpy as np
 
 from ._meta import SAMPLE_RATE
@@ -17,6 +18,7 @@ class Denoiser:
         self.frame_size = model.frame_size
         self.sample_rate = model.sample_rate  # 48000
         self.atten_lim_db = atten_lim_db
+        self._lock = threading.Lock()
         self.reset()
 
     # ---- lifecycle ----
@@ -27,6 +29,13 @@ class Denoiser:
         self._in_rs: StreamResampler | None = None
         self._out_rs: StreamResampler | None = None
         self._cur_sr: int | None = None
+
+    def _guard(self) -> None:
+        if not self._lock.acquire(blocking=False):
+            raise RuntimeError(
+                "Denoiser stream used from two threads at once. Use one stream per thread; "
+                "call DeepFilterModel.new_stream() per thread (the model/session is shared)."
+            )
 
     @property
     def latency_ms(self) -> float:
@@ -64,34 +73,42 @@ class Denoiser:
             self._out_buf.write(enh)
 
     def process(self, samples: np.ndarray, sr: int) -> np.ndarray:
-        x = np.ascontiguousarray(samples, dtype=np.float32)
-        if x.ndim == 2:  # [frames, channels] or [channels, frames] -> mono
-            x = x.mean(axis=1) if x.shape[1] <= x.shape[0] else x.mean(axis=0)
-        x = x.reshape(-1)
-        self._ensure_resamplers(sr)
-        if self._in_rs is not None:
-            x = self._in_rs.process(x)
-        self._in_buf.write(x)
-        self._run_available_frames()
-        y = self._out_buf.pop_all()
-        if self._out_rs is not None:
-            y = self._out_rs.process(y)
-        return y
+        self._guard()
+        try:
+            x = np.ascontiguousarray(samples, dtype=np.float32)
+            if x.ndim == 2:  # [frames, channels] or [channels, frames] -> mono
+                x = x.mean(axis=1) if x.shape[1] <= x.shape[0] else x.mean(axis=0)
+            x = x.reshape(-1)
+            self._ensure_resamplers(sr)
+            if self._in_rs is not None:
+                x = self._in_rs.process(x)
+            self._in_buf.write(x)
+            self._run_available_frames()
+            y = self._out_buf.pop_all()
+            if self._out_rs is not None:
+                y = self._out_rs.process(y)
+            return y
+        finally:
+            self._lock.release()
 
     def flush(self) -> np.ndarray:
-        # drain any tail held by the input resampler's filter first.
-        if self._in_rs is not None:
-            tail = self._in_rs.process(np.zeros(0, dtype=np.float32), last=True)
-            if tail.size:
-                self._in_buf.write(tail)
-        # pad the final partial input frame with zeros, drain everything.
-        f = self.frame_size
-        rem = self._in_buf.available % f
-        if rem:
-            self._in_buf.write(np.zeros(f - rem, dtype=np.float32))
-        self._run_available_frames()
-        y = self._out_buf.pop_all()
-        if self._out_rs is not None:
-            y = np.concatenate([self._out_rs.process(y), self._out_rs.process(
-                np.zeros(0, dtype=np.float32), last=True)])
-        return y
+        self._guard()
+        try:
+            # drain any tail held by the input resampler's filter first.
+            if self._in_rs is not None:
+                tail = self._in_rs.process(np.zeros(0, dtype=np.float32), last=True)
+                if tail.size:
+                    self._in_buf.write(tail)
+            # pad the final partial input frame with zeros, drain everything.
+            f = self.frame_size
+            rem = self._in_buf.available % f
+            if rem:
+                self._in_buf.write(np.zeros(f - rem, dtype=np.float32))
+            self._run_available_frames()
+            y = self._out_buf.pop_all()
+            if self._out_rs is not None:
+                y = np.concatenate([self._out_rs.process(y), self._out_rs.process(
+                    np.zeros(0, dtype=np.float32), last=True)])
+            return y
+        finally:
+            self._lock.release()
