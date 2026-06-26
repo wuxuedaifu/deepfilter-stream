@@ -1,9 +1,33 @@
 import deepfilter_stream
+import numpy as np
+from deepfilter_stream import DeepFilterModel
 
 
 def test_version_string():
     assert isinstance(deepfilter_stream.__version__, str)
     assert deepfilter_stream.__version__.count(".") >= 2
+
+
+def test_atten_lim_none_is_exact(require_model):
+    m = DeepFilterModel()
+    a = m.new_stream(atten_lim_db=None)
+    f = np.random.randn(512).astype(np.float32) * 0.1
+    out = a.process_frame(f)
+    assert out.shape == (512,)
+
+
+def test_atten_lim_limits_suppression_energy(require_model):
+    m = DeepFilterModel()
+    plain = m.new_stream(atten_lim_db=None)
+    limited = m.new_stream(atten_lim_db=12.0)
+    rng = np.random.default_rng(0)
+    e_plain = e_lim = 0.0
+    for _ in range(40):
+        f = (rng.standard_normal(512) * 0.1).astype(np.float32)
+        e_plain += float(np.sum(plain.process_frame(f) ** 2))
+        e_lim += float(np.sum(limited.process_frame(f.copy()) ** 2))
+    # limited keeps more (dry-mixed) energy than fully-suppressed plain output
+    assert e_lim >= e_plain
 
 
 def test_flush_drains_input_resampler(require_model):

@@ -29,6 +29,10 @@ class Denoiser:
         self._in_rs: StreamResampler | None = None
         self._out_rs: StreamResampler | None = None
         self._cur_sr: int | None = None
+        self._dry_delay = RingBuffer()
+        if self.atten_lim_db is not None:
+            self._dry_delay.write(np.zeros(self.frame_size, dtype=np.float32))  # d-sample delay
+            self._lim = float(10.0 ** (-self.atten_lim_db / 20.0))
 
     def _guard(self) -> None:
         if not self._lock.acquire(blocking=False):
@@ -53,6 +57,10 @@ class Denoiser:
         enhanced = np.asarray(res[0], dtype=np.float32).reshape(-1)
         for name, val in zip(self._model.input_names[1:], res[1:]):
             self._states[name] = val
+        if self.atten_lim_db is not None:
+            self._dry_delay.write(frame)
+            dry = self._dry_delay.pop(self.frame_size)
+            enhanced = self._lim * dry + (1.0 - self._lim) * enhanced
         return enhanced
 
     # ---- block API ----
