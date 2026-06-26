@@ -20,8 +20,6 @@ def test_initial_states_are_fresh_copies(require_model):
     assert b["band_unit_norm_state"].shape == (1, 96, 1)
 
 
-# TODO(task6): remove xfail once denoiser.py exists
-@pytest.mark.xfail(reason="Denoiser lands in Task 6", raises=ImportError, strict=False)
 def test_new_stream_returns_denoiser(require_model):
     m = DeepFilterModel()
     s = m.new_stream()
