@@ -5,3 +5,4 @@ dist/
 build/
 *.egg-info/
 .venv/
+tests/data/denoiser_model.onnx
