@@ -1,0 +1,43 @@
+{
+  "model": "DeepFilterNet3_torchDF",
+  "sample_rate": 48000,
+  "frame_size": 512,
+  "fft_size": 1024,
+  "nb_bands": 32,
+  "nb_df": 96,
+  "input_names": [
+    "input_frame",
+    "erb_norm_state",
+    "band_unit_norm_state",
+    "analysis_mem",
+    "synthesis_mem",
+    "rolling_erb_buf",
+    "rolling_feat_spec_buf",
+    "rolling_c0_buf",
+    "rolling_spec_buf_x",
+    "rolling_spec_buf_y",
+    "enc_hidden",
+    "erb_dec_hidden",
+    "df_dec_hidden"
+  ],
+  "output_names": [
+    "enhanced_audio_frame",
+    "new_erb_norm_state",
+    "new_band_unit_norm_state",
+    "new_analysis_mem",
+    "new_synthesis_mem",
+    "new_rolling_erb_buf",
+    "new_rolling_feat_spec_buf",
+    "new_rolling_c0_buf",
+    "new_rolling_spec_buf_x",
+    "new_rolling_spec_buf_y",
+    "new_enc_hidden",
+    "new_erb_dec_hidden",
+    "new_df_dec_hidden"
+  ],
+  "sha256": {
+    "onnx": "b758c49d6708a5b7979e3de185705a8a4915076c862fb17b1b304d9a72b75cdc",
+    "initial_states": "1165503707b8859a6b650b6bb0dc5b6c55d30c2779d87502f97a77102b5d3872",
+    "reference_wav": "44fa1174796eb22d1d04e4ccd3103404ef30707e407bb7fe1e87077f3e7a2557"
+  }
+}
