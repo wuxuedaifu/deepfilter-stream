@@ -9,7 +9,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install -e ".[dev]"
-      - name: Fetch model (optional; benchmarks skip if absent)
+      - name: Fetch model (required; benchmarks fail if absent)
         continue-on-error: true
         run: |
           curl -fL -o tests/data/denoiser_model.onnx \
